@@ -34,6 +34,8 @@ public class AbstractDocumentAnalyzer {
 		// stop words
 		String stopWordsDir = configuration
 				.get("processor.analyzer.stopwords.path");
+		
+		System.out.println(stopWordsDir);
 		if (stopWordsDir != null) {
 			File dir = new File(stopWordsDir);
 			File[] files = dir.listFiles(new FileFilter() {

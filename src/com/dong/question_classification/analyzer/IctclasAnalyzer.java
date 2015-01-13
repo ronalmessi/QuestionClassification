@@ -28,7 +28,7 @@ public class IctclasAnalyzer extends AbstractDocumentAnalyzer implements
 		super(configuration);
 		// 初始化
 		analyzer = (CLibrary) Native.loadLibrary(
-				"C:\\iclass-workspace\\QuestionClassification\\source\\NLPIR",
+				"D:\\play\\workspace11\\QuestionClassification\\source\\NLPIR",
 				CLibrary.class);
 		int init_flag = analyzer.NLPIR_Init("", 1, "0");
 		String resultString = null;
@@ -59,13 +59,12 @@ public class IctclasAnalyzer extends AbstractDocumentAnalyzer implements
 					String[] rawWords = content.split("\\s+");
 					for (String rawWord : rawWords) {
 						String[] words = rawWord.split("/");
-						if (words.length == 2) {
+						if (words.length == 2 && !super.isStopword(words[0])) {
 							String word = words[0];
 							String lexicalCategory = words[1];
 							Term term = terms.get(word);
 							if (term == null) {
 								term = new Term(word);
-								// TODO set lexical category
 								term.setLexicalCategory(lexicalCategory);
 								terms.put(word, term);
 							}
@@ -90,9 +89,10 @@ public class IctclasAnalyzer extends AbstractDocumentAnalyzer implements
 	}
 
 	public static void main(String[] args) {
-		Configuration configuration = new Configuration();
+		Configuration configuration = new Configuration(
+				"config-train.properties");
 		IctclasAnalyzer a = new IctclasAnalyzer(configuration);
-		String f = "C:\\Users\\iclass\\Desktop\\22.txt";
+		String f = "D:\\play\\workspace11\\QuestionClassification\\source\\data.txt";
 		Map<String, Term> terms = a.analyze(new File(f));
 		for (Entry<String, Term> entry : terms.entrySet()) {
 			System.out.println(entry.getValue());
