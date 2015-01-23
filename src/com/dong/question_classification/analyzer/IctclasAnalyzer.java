@@ -13,6 +13,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.dong.question_classification.common.CLibrary;
+import com.dong.question_classification.common.Context;
+import com.dong.question_classification.common.ProcessorType;
 import com.dong.question_classification.common.QuestionAnalyzer;
 import com.dong.question_classification.common.Term;
 import com.dong.question_classification.config.Configuration;
@@ -40,10 +42,9 @@ public class IctclasAnalyzer extends AbstractDocumentAnalyzer implements
 	}
 
 	@Override
-	public Map<String, Term> analyze(File file) {
-		String doc = file.getAbsolutePath();
-		LOG.info("Process document: file=" + doc);
-		Map<String, Term> terms = new HashMap<String, Term>(0);
+	public Map<String, Term> analyze(Context context) {
+		File file = context.getFDMetadata().getInputRootDir();
+		LOG.info("Process document: file=" + file.getAbsolutePath());
 		BufferedReader br = null;
 		try {
 			br = new BufferedReader(new InputStreamReader(new FileInputStream(
@@ -52,25 +53,37 @@ public class IctclasAnalyzer extends AbstractDocumentAnalyzer implements
 			while ((line = br.readLine()) != null) {
 				line = line.trim();
 				if (!line.isEmpty()) {
-					String content = analyzer.NLPIR_ParagraphProcess(line, 1);
-					// String content = new String(nativeBytes, 0,
-					// nativeBytes.length, charSet);
-					System.out.println(content);
-					String[] rawWords = content.split("\\s+");
-					for (String rawWord : rawWords) {
-						String[] words = rawWord.split("/");
-						if (words.length == 2 && !super.isStopword(words[0])) {
-							String word = words[0];
-							String lexicalCategory = words[1];
-							Term term = terms.get(word);
-							if (term == null) {
-								term = new Term(word);
-								term.setLexicalCategory(lexicalCategory);
-								terms.put(word, term);
+					String[] question_label = line.split(",");
+					if (question_label.length == 2
+							&& question_label[1].startsWith("L")) {
+						String question = question_label[0];
+						String lable = question_label[1];
+						System.out.println(question + "--" + lable);
+						Map<String, Term> terms = new HashMap<String, Term>(0);
+						String content = analyzer.NLPIR_ParagraphProcess(
+								question, 1);
+						String[] rawWords = content.split("\\s+");
+						for (String rawWord : rawWords) {
+							String[] words = rawWord.split("/");
+							if (words.length == 2
+									&& !super.isStopword(words[0])) {
+								String word = words[0];
+								String lexicalCategory = words[1];
+								Term term = terms.get(word);
+								if (term == null) {
+									term = new Term(word);
+									term.setLexicalCategory(lexicalCategory);
+									terms.put(word, term);
+								}
+								term.incrFreq();
 							}
-							term.incrFreq();
-							LOG.debug("Got word: word=" + rawWord);
 						}
+						context.getVectorMetadata().addTerms(lable, question,
+								terms);
+						context.getVectorMetadata().addTermsToInvertedTable(lable, question, terms);
+						
+//						System.out.println("Done: question=" + question + ", termCount=" + terms.size());
+//						System.out.println("Terms in a question: terms=" + terms);
 					}
 				}
 			}
@@ -85,19 +98,20 @@ public class IctclasAnalyzer extends AbstractDocumentAnalyzer implements
 				LOG.warn(e);
 			}
 		}
-		return terms;
+		return null;
 	}
 
 	public static void main(String[] args) {
-		Configuration configuration = new Configuration(
-				"config-train.properties");
-		IctclasAnalyzer a = new IctclasAnalyzer(configuration);
-		String f = "D:\\play\\workspace11\\QuestionClassification\\source\\data.txt";
-		Map<String, Term> terms = a.analyze(new File(f));
+		Context context = new Context(ProcessorType.TRAIN, "config-train.properties");
+		IctclasAnalyzer a = new IctclasAnalyzer(context.getConfiguration());
+		
+		Map<String, Term> terms = a.analyze(context);
 		for (Entry<String, Term> entry : terms.entrySet()) {
 			System.out.println(entry.getValue());
 		}
 
 	}
+
+	
 
 }
